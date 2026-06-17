@@ -1,0 +1,553 @@
+---
+title: "Project"
+output:
+  html_document: default
+  word_document: default
+  pdf_document: default
+date: "2024-11-23"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r,  warning=FALSE, message=FALSE}
+
+
+##loading packages and reading in data
+library(dplyr)
+library(ggplot2)
+library(plotly)
+library(lubridate)
+library(shiny)
+
+##labor force participation rate
+foreign_lpr=read.csv("C:\\Users\\cassi\\Downloads\\foreign_lpr.csv")
+us_lpr= read.csv("C:\\Users\\cassi\\Downloads\\labor_participation_rate.csv")
+
+
+## Proportion of foreign born residents vs natural born
+
+foreign_pop= read.csv("C:\\Users\\cassi\\Downloads\\foreign_pop.csv")
+  
+native_pop= read.csv("C:\\Users\\cassi\\Downloads\\native_pop.csv")
+
+### earnings of foreign born as a percent of native born
+
+percent_earnings= read.csv("C:\\Users\\cassi\\Downloads\\percent_earnings.csv")
+
+### projected population for different scenarios
+main_proj=read.csv("C:\\Users\\cassi\\Downloads\\main_projection.csv")
+zero_proj=read.csv("C:\\Users\\cassi\\Downloads\\zero_projection.csv")
+low_proj= read.csv("C:\\Users\\cassi\\Downloads\\low_projection.csv")
+  
+
+```
+
+Immigration has long been integral to the American narrative, influencing the nation’s identity, values, and development. Despite this, persistent misconceptions about immigration continue to spread, often fueled by alarmist rhetoric that dehumanizes immigrants and ignites baseless fears. Similar to the early 20th century, immigrants are still wrongfully depicted as a threat to American jobs, values, and safety. Specifically, in the past several years, immigration has increased in concern to many U.S. citizen voters. In fact, one of the top issues newly elected  president Donald Trump’s supporters felt needed to be strictly reformed was immigration policy. Some argue that stricter immigration policies are necessary for many reasons, such as protecting national security, and preserving jobs for U.S. citizens. Although debates over stricter immigration laws have existed for some time, the policies that Donald Trump proposes, such as ending birthright citizenship and mass deportation of undocumented immigrants, could have profound consequences across various facets of society. This perspective of immigration  often overlooks the significant role that immigrants play in sustaining and strengthening the U.S. economy. From filling essential labor gaps to greatly contributing to tax revenue, immigrants have consistently been a driving force behind economic growth.
+
+Through examining the economic contributions of immigrants, the potential labor shortages caused by such policies, and the long-term impact on industries reliant on immigrant workers, this project will highlight how the rise in anti-immigration rhetoric and restrictive immigration reform policies may ultimately backfire as there is an inherent conflict between the goals of immigration reform advocates and their economic priorities.
+
+It is important to note that most of the data presented focuses on foreign-born residents, which include both non-citizens (47.8%) and naturalized citizens (52.2%). These proposed policies would impact both groups: non-citizens could face deportation, while the population of naturalized citizens could significantly decline due to stricter immigration laws making it more difficult to obtain legal status.
+
+As these proposed immigration policies threaten to affect both non-citizens and naturalized citizens, it is crucial to understand the broader societal implications. Immigration, along with economic concerns, has been a key issue for voters, influencing the priorities of political candidates. The following visual highlights how the economy and immigration were central to the issues that mattered most to the supporters of the winning candidate in the recent election.
+
+
+## Plot1
+```{r,  warning=FALSE, message=FALSE}
+
+# creating dataframe for winning candidates registered voters supportersmost 
+##important issues
+percent <- c(93, 55, 54, 70, 76, 82, 53, 35, 18, 11)
+issue <- c("Economy", 
+           "Healthcare", 
+           "Supreme Court Appointments", 
+           "Foreign Policy", 
+           "Violent Crimes", 
+           "Immigration", 
+           "Gun Policy", 
+           "Abortion", 
+           "Racial and Ethnic Inequality", 
+           "Climate Change")
+
+policy_opinions <- data.frame(Issue = issue, Percent = percent)
+
+# adding a column for color grouping so the top two issues are highlighted
+policy_opinions$Group <- ifelse(
+  policy_opinions$Percent %in% sort(policy_opinions$Percent, decreasing = TRUE)[1:2], "Top 2", "Other")
+
+###horizontal bar chart
+ggplot(policy_opinions, aes(x = reorder(Issue, Percent), y = Percent, fill = Group)) +
+  geom_bar(stat = "identity") +
+  scale_fill_manual(values = c("Top 2" = "darkblue", "Other" = "orchid"),guide = "none") +
+  geom_text(aes(label = Percent), hjust = -0.2) +
+  coord_flip() +
+  labs(
+    title = "Percentage of supporters of the winning candidate in the 2024
+    presidential election who identified each issue that was 
+    important in influencing their vote",
+    x = NULL,
+    y = NULL
+  ) +
+  scale_y_continuous(labels = function(x) paste0(x, "%")) +
+  theme(
+    panel.grid.major.x  = element_blank(),  
+    panel.grid.minor.x = element_blank(),
+    plot.title = element_text(hjust = 0.5),
+    legend.position = "none" 
+  ) +
+  theme_minimal()
+
+
+
+
+```
+
+
+As illustrated in the visual, 93% of voters who supported Trump's platform 
+identified the economy as one of the issues that was an important factor 
+influencing their vote,  while 82% cited immigration as one of the key reasons
+for their support.This dual emphasis on economic and immigration issues 
+highlights the tension between the desire for economic growth and the increasingly
+restrictive views on immigrationpolicies, which may undermine the very 
+economic stability that voters seek to preserve.
+
+Building on the prominence of immigration and economic issues for Trump 
+supporters, it is essential to examine the demographic shifts that play a 
+significant role in shaping these concerns. A key factor influencing debates
+around immigration is the changing population dynamics in the U.S., particularly
+the growing population of foreign-born residents.The following visual compares
+the population density of foreign-born versus native-born residents, providing
+a clearer picture of how these groups are distributed across the country.
+
+## Plot2
+
+```{r, warning=FALSE, message=FALSE}
+
+
+# combining year and month into one date column for both datasets
+foreign_pop = foreign_pop %>%
+  mutate(Date = as.Date(paste(Year, substr(Period, 2, 3), "01", sep = "-"), format = "%Y-%m-%d"))
+
+native_pop = native_pop %>%
+  mutate(Date = as.Date(paste(Year, substr(Period, 2, 3), "01", sep = "-"), format = "%Y-%m-%d"))
+
+
+###combining dataframes
+both_pops = rbind(
+  data.frame(Date = foreign_pop$Date, Population = foreign_pop$Value, Group = "Foreign"),
+  data.frame(Date = native_pop$Date, Population = native_pop$Value, Group = "U.S."))
+
+
+
+
+## taking average labor participation rate for each year
+
+favg_pop =foreign_lpr %>%
+  group_by(Year) %>%
+  summarize(average_pop = mean(Value, na.rm = TRUE))
+
+navg_pop = us_lpr %>%
+  group_by(Year) %>%
+  summarize(average_pop = mean(Value, na.rm = TRUE))
+
+### combining tables to create plot
+both_avgpop = rbind(
+  data.frame(Year = favg_pop$Year, average_pop = favg_pop$average_pop, Group = "Foreign"),
+  data.frame(Year = navg_pop$Year, average_pop = navg_pop$average_pop, Group = "native"))
+
+
+## density plot
+both_pops$Group <- factor(both_pops$Group, levels = c( "U.S.","Foreign"))
+
+
+ggplot(both_pops, aes(x = Date, y = Population, fill = Group)) +
+  geom_area(aes(color = Group), alpha = 0.7, position="identity") + 
+  scale_fill_manual(values = c("U.S." = "plum", "Foreign" = "navyblue")) + 
+  scale_color_manual(values = c("U.S." = "navyblue","Foreign" = "navyblue" )) + 
+  labs(
+    title = "Population Density of Foreign vs U.S. Born (2016–2024)",
+    x = NULL,
+    y = "Population (in Thousands)"
+  ) +
+  scale_x_date(limits = as.Date(c("2016-01-01", "2024-01-01")))+
+   theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5)) 
+
+##still need to make interactive
+##still need to reformat y-range values
+
+```
+
+
+## Plot 3
+
+```{r, warning=FALSE, message=FALSE}
+
+
+##combining year and month into one date column for both datasets
+
+foreign_lpr = foreign_lpr %>%
+  mutate(Date = as.Date(paste(Year, substr(Period, 2, 3), "01", sep = "-"), format = "%Y-%m-%d"))
+
+us_lpr = us_lpr %>%
+  mutate(Date = as.Date(paste(Year, substr(Period, 2, 3), "01", sep = "-"), format = "%Y-%m-%d"))
+
+# combining adataframes
+combined_data = rbind(
+  data.frame(Date = foreign_lpr$Date, Labor_Participation_Rate = foreign_lpr$Value, Group = "Foreign-Born"),
+  data.frame(Date = us_lpr$Date, Labor_Participation_Rate = us_lpr$Value, Group = "U.S.-Born"))
+
+
+## line graph
+plot4 = ggplot(combined_data, aes(
+  x = Date, 
+  y = Labor_Participation_Rate, 
+  group = Group, 
+  text = paste("Group:", Group, "<br>Date:", format(Date, "%b %Y"), "<br>Rate:", round(Labor_Participation_Rate, 2)))) +
+  geom_line(aes(color = Group), size = 0.9) + 
+  scale_y_continuous(limits = c(45, 80),breaks = seq(40, 80, by = 5))+
+  scale_color_manual(values = c("darkblue", "orchid"),name = NULL) + 
+  labs(
+    title = "Labor Force Participation Rate(%) From 2016 to 2024",
+    x=NULL,
+    y=NULL) +
+  theme_minimal() +
+  theme(
+    text = element_text(size = 12),
+    panel.grid.major.x = element_blank(),  
+    panel.grid.minor.x = element_blank(),  
+    legend.title = element_blank())  
+    
+
+# plotly
+plotly4 = ggplotly(plot4, tooltip = "text")
+
+plotly4
+
+```
+
+
+##Plot 4
+
+```{r,  warning=FALSE, message=FALSE}
+# line graph
+base_line=ggplot(percent_earnings, aes(x = Year, y = Value)) +
+  geom_smooth(method = "loess", color = "steelblue", size = 1, se = FALSE) +  
+  labs(title = "Foreign-Born Earnings as a Percentage of Native-Born Earnings (2016-2023)",
+       x = NULL,
+       y = "Percentage of Native-Born Earnings") +
+  scale_y_continuous(limits = c(60, 100))+
+  theme_minimal() +
+  geom_vline(aes(xintercept = 2020), color = "red", linetype = "dashed", size = 0.7)+
+   annotate("text",x = 2021, y = 95, label = "Start of Pandemic (March 2020)", 
+           color = "red", size = 3, hjust = 0)
+  
+line_with_text=ggplotly(base_line) %>%
+  layout(hoverlabel = list(bgcolor = "white", font = list(size = 12)))
+
+###final line plot
+line_with_text
+
+
+
+
+```
+
+
+## plot 5
+
+```{r, warning=FALSE, message=FALSE}
+
+## shinyapp side-byside bar plots
+industries= c("Management, professional, and related occupations",
+              "Service occupations",
+              "Sales and office occupations",
+              "Natural resources, construction, and maintenance occupations",
+              "Production, transportation, and material moving occupations")
+
+foreign_pct= c(36.1,21.8,13.0,13.8,15.2)
+  
+native_pct= c(45.4,15.0, 20.1,7.8,11.8)
+
+occupation_data = data.frame(
+  industries,
+  foreign_pct,
+  native_pct
+)
+
+###shiny app that allows users to select industry
+ui <- fluidPage(
+  titlePanel("Occupation Composition by Foreign and Native Workers"),
+  sidebarLayout(
+    sidebarPanel(
+      selectInput(
+        "industry", 
+        "Select Industry:",
+        choices = c("All", industries),
+        selected = "All"
+      )
+    ),
+    mainPanel(
+      plotOutput("barPlot")
+    )
+  )
+)
+
+### the server
+server = function(input, output) {
+  
+  # the reactive dataset for industry selection
+  filtered_data = reactive({
+    if (input$industry == "All") {
+      occupation_data
+    } else {
+      occupation_data[occupation_data$industries == input$industry, ]
+    }
+  })
+  
+  ### the grouped barplot
+  output$barPlot = renderPlot({
+    data <- filtered_data()
+    
+    ###
+    plot_data <- data.frame(
+      Industry = rep(data$industries, 2),
+      Group = c(rep("Foreign-Born", nrow(data)), rep("Native-Born", nrow(data))),
+      Proportion = c(data$foreign_pct, data$native_pct)
+    )
+    
+    ggplot(plot_data, aes(x = Industry, y = Proportion, fill = Group)) +
+      geom_bar(stat = "identity", position = "dodge") +
+      scale_fill_manual(values = c("Foreign-Born" = "navy", "Native-Born" = "plum")) +
+      labs(
+        title = "Proportion of Workers by Industry",
+        x = "Industry",
+        y = "Percentage (%)",
+        fill = "Group"
+      ) +
+      theme_minimal() +
+      theme(
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.title = element_text(size = 12, face = "bold"),
+        legend.text = element_text(size = 10)
+      )
+  })
+}
+
+
+shinyApp(ui = ui, server = server)
+
+
+```
+
+
+
+
+
+
+## plot 6
+
+```{r,  warning=FALSE, message=FALSE}
+
+
+categories <- c("Finance, Insurance, Real Estate, Rental, and Leasing", 
+                "Professional and Business Services", "Government", 
+                "Manufacturing", "Educational Services, Healthcare, and Social Assistance", 
+                "Retail Trade", 
+                "Wholesale Trade", "Information", 
+                "Arts, Entertainment, Recreation, Accommodation, and Food Services", 
+                "Construction", "Transportation and Warehousing", "Other")
+
+percent_added_to_gdp <- c(20.7, 13, 11.4, 10.3, 8.6, 6.4, 5.9, 5.4, 4.5, 4.4, 3.5, 5.9)
+
+value_added <- c(5656.5, 3543.9, 3107.4, 2804.7, 2351.6, 1738.5, 1613.7, 1475.1, 
+                1231.3, 1203.8, 970.5,1663.9)
+
+### data frame with gdp value and percentage of gdp for each industry
+industry_data = data.frame(categories, percent_added_to_gdp, value_added)
+
+
+
+
+##donut chart highlighting top three industries that employ most immigrants
+colors = c("#682D84", "#AC130E", "#9b4f96", "#e265ab", "#AC130E", "#f18dc3", 
+            "#E69FC7", "#f4bfd6", "#f7d8e2", "#AC130E", "#fbf0f7", "#f2a6cf")
+
+plot_ly(industry_data, labels = ~categories, values = ~percent_added_to_gdp, 
+        type = 'pie', hole = 0.5, textinfo = 'percent', 
+        hoverinfo = 'label+percent+text', text = ~paste("$", format(value_added, big.mark = ","),"Billion"),
+        marker = list(colors = colors)) %>%
+  layout(title = "Percentage of GDP Added by Industry",
+         showlegend = FALSE)
+
+
+
+
+```
+
+
+
+
+##plot 7
+
+<div class='tableauPlaceholder' id='viz1732412620544' style='position: relative'><noscript><a href='#'><img alt='State and Local Tax Contributions by Undocumented ImmigrantsCurrent Tax Contributions and Potential Tax Contributions if Granted Legal Status ' src='https:&#47;&#47;public.tableau.com&#47;static&#47;images&#47;48&#47;48TPQRW26&#47;1_rss.png' style='border: none' /></a></noscript><object class='tableauViz'  style='display:none;'><param name='host_url' value='https%3A%2F%2Fpublic.tableau.com%2F' /> <param name='embed_code_version' value='3' /> <param name='path' value='shared&#47;48TPQRW26' /> <param name='toolbar' value='yes' /><param name='static_image' value='https:&#47;&#47;public.tableau.com&#47;static&#47;images&#47;48&#47;48TPQRW26&#47;1.png' /> <param name='animate_transition' value='yes' /><param name='display_static_image' value='yes' /><param name='display_spinner' value='yes' /><param name='display_overlay' value='yes' /><param name='display_count' value='yes' /><param name='language' value='en-US' /><param name='filter' value='publish=yes' /></object></div> 
+
+  
+```{js, warning=FALSE, message=FALSE}
+var divElement = document.getElementById('viz1732412620544');                
+var vizElement = divElement.getElementsByTagName('object')[0];                   
+vizElement.style.width='100%';
+vizElement.style.height=(divElement.offsetWidth*0.75)+'px';                    
+var scriptElement = document.createElement('script');                   
+scriptElement.src = 'https://public.tableau.com/javascripts/api/viz_v1.js';                    vizElement.parentNode.insertBefore(scriptElement, vizElement);                
+```
+
+
+## plot 8
+
+```{r,  warning=FALSE, message=FALSE}
+#animated line plots
+
+accumulate_by <- function(dat, var) {
+  var <- lazyeval::f_eval(var, dat)
+  lvls <- plotly:::getLevels(var)
+  dats <- lapply(seq_along(lvls), function(x) {
+    cbind(dat[var %in% lvls[seq(1, x)], ], frame = lvls[[x]])
+  })
+  dplyr::bind_rows(dats)
+}
+
+
+
+
+main_proj$Scenario <- "Main"
+zero_proj$Scenario <- "Zero Immigration"
+low_proj$Scenario <- "Low Immigration"
+
+# Combine the dataframes into one
+projection_data <- rbind(main_proj, zero_proj, low_proj)
+projection_data=projection_data %>%
+  filter(Year <= 2060)
+
+accumulated_data <- accumulate_by(projection_data,~Year)
+
+animated_plot <- plot_ly(accumulated_data , 
+                         x = ~Year,
+                         y = ~Population,
+                         split = ~Scenario,
+                         frame= ~frame,
+                         type = 'scatter', 
+                         mode = 'lines',
+                        line = list(simplify = F)) %>% animation_opts( 
+                          frame = 100, 
+                          transition = 0, 
+                          redraw = FALSE)%>% 
+  animation_slider(
+  hide = T)
+
+
+animated_plot
+
+###need to fix colors
+##need to fix legend so aligns with colors on line graph
+
+
+
+
+```
+
+
+
+## Plot 9
+
+```{r, warning=FALSE, message=FALSE}
+
+##Shiny app percent change
+
+zero_proj = data.frame(Year = 2020:2060, Percent.change.since.prior.year = runif(41, -0.6, 0.2))
+main_proj = data.frame(Year = 2020:2060, Percent.change.since.prior.year = runif(41, -0.1, 0.2))
+low_proj = data.frame(Year = 2020:2060, Percent.change.since.prior.year = runif(41, -0.2, 0.2))
+
+### defining UI
+ui = fluidPage(
+  titlePanel("Projection Scenarios"),
+  
+  sidebarLayout(
+    sidebarPanel(
+      selectInput("scenario", "Choose Scenario:",
+                  choices = c("Main", "Low", "Zero"))
+    ),
+    
+    mainPanel(
+      plotOutput("plot")
+    )
+  )
+)
+
+### creating function to defini the server logic
+server = function(input, output) {
+  
+  ### filtering data based on selected scenario
+  filtered_data = reactive({
+    if (input$scenario == "Main") {
+      filtered <- main_proj
+    } else if (input$scenario == "Low") {
+      filtered <- low_proj
+    } else if (input$scenario == "Zero") {
+      filtered <- zero_proj
+    }
+    return(filtered)
+  })
+  
+  ### rendering the plot based on the filtered data
+  output$plot = renderPlot({
+    data = filtered_data()
+    
+    ggplot(data, aes(x = Year, y = Percent.change.since.prior.year)) +
+      geom_bar(stat = "identity", fill = ifelse(data$Percent.change.since.prior.year >= 0, "navy", "plum")) +
+      labs(title = paste("Yearly Percent Change Under", input$scenario, "Projection Scenario"),
+           x = NULL,
+           y = "Percent Change (%)") +
+      scale_y_continuous(limits = c(-0.6, 0.2)) +
+      theme_minimal() +
+      theme(plot.title = element_text(hjust = 0.5))
+  })
+}
+
+
+shinyApp(ui = ui, server = server)
+```
+
+
+
+Sources:
+
+(data for first visual)
+https://www.pewresearch.org/politics/2024/09/09/issues-and-the-2024-election/pp_2024-9-9_harris-trump_2-01/
+
+(data for second visual)
+https://data.census.gov/table/ACSST1Y2023.S0502?q=immigrants
+
+(data for third visual )
+https://data.bls.gov/dataViewer/view/timeseries/LNS11300000
+https://data.bls.gov/dataViewer/view/timeseries/LNU01373395
+
+(data for fourth visual)
+https://data.bls.gov/dataViewer/view/timeseries/LEU0257370500
+
+(data for fifth)
+https://www.bls.gov/news.release/forbrn.t04.htm
+
+(data for sixth)
+https://www.bea.gov/ -statista 
+
+(data for 7th)
+https://itep.org/undocumented-immigrants-taxes-2024/
+
+(data for 8th and 9th)
+https://www.census.gov/data/tables/2023/demo/popproj/2023-summary-tables.html
+
+https://www.census.gov/data/tables/2023/demo/popproj/2023-alternative-summary-tables.html
+
